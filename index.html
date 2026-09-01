@@ -164,6 +164,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     <div class="extract" id="extract">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong style="font-weight:500" id="ex-title"></strong><span class="pill" id="ex-tag"></span></div>
       <dl id="ex-dl"></dl>
+      <div id="ex-missing"></div>
     </div>
     <p class="note">L'extraction directe depuis l'URL SeLoger / Leboncoin est bloquée par leurs protections anti-robot. Deux alternatives : le bouton favori « Envoyer vers l'analyseur » (page d'accueil) depuis l'annonce ouverte, ou le copier-coller du texte / PDF ci-dessus avec l'extraction IA.</p>
   </section>
@@ -434,6 +435,7 @@ function loadSim(){
   $('extract').style.display='none';
   $('ad-text').value=b.adText||'';
   build();
+  if(s.extract)renderSense(s.extract);
   if(pendingExtract){pendingExtract=false;if($('ad-text').value){$('src-state').textContent='Texte de l\'annonce récupéré — extraction IA automatique…';extractAI('text')}}
   else if(b.adText)$('src-state').textContent='Texte de l\'annonce récupéré par le favori — cliquez « Extraire avec l\'IA ».';
 }
@@ -496,11 +498,14 @@ function importFromHash(b64){
     const sim=newSimObj('Base');
     if(+d.p>0)sim.p.prix=+d.p;
     if(+d.s>0)sim.p.surf=+d.s;
+    const trav=sim.model.find(x=>x.id==='trav');
+    trav.lines=[['Rénovation complète (forfait de départ)','m2',1500],['Imprévus','pctTrav',10]];
+    sim.extract={source:'favori',titre:d.t||null,prix_affiche:+d.p>0?+d.p:null,surface_m2:+d.s>0?+d.s:null,nb_pieces:d.r||null};
     b.sims[sim.id]=sim;b.project.refSim=sim.id;
     if(typeof d.x==='string'&&d.x.length>40)b.adText=d.x.slice(0,20000);
     DB.biens[b.id]=b;persist();
-    if(b.adText&&(localStorage.getItem('ia_url')||'').trim()){pendingExtract=true;location.hash='#/sim/'+b.id+'/'+sim.id}
-    else location.hash='#/bien/'+b.id;
+    if(b.adText&&(localStorage.getItem('ia_url')||'').trim())pendingExtract=true;
+    location.hash='#/sim/'+b.id+'/'+sim.id;
   }catch(e){location.hash='#/'}
 }
 function toggleIA(){const e=$('ia-settings');e.style.display=e.style.display==='none'?'block':'none'}
@@ -546,16 +551,33 @@ function applyExtract(d){
     if(bits&&!(b.notes||'').includes(bits))b.notes=(b.notes?b.notes+'\n':'')+bits;
     persist();
   }
+  const s=curS();
+  let merged=Object.assign({},s&&s.extract||{},{source:'ia'});
+  Object.keys(d).forEach(k=>{if(d[k]!=null&&d[k]!=='')merged[k]=d[k]});
+  if(s){s.extract=merged;persist()}
+  renderSense(merged);
+  build();
+}
+function renderSense(d){
+  $('ex-title').textContent=d.titre||'Annonce';
+  $('ex-tag').textContent=d.source==='ia'?'Extrait par IA':'Récupéré par le favori';
   const rows=[['Prix affiché',d.prix_affiche!=null?fmt(d.prix_affiche):null],
     ['Surface',d.surface_m2?d.surface_m2+' m²':null],['Pièces',d.nb_pieces],
     ['Charges',d.charges_mois!=null?Math.round(d.charges_mois)+' €/mois':null],
     ['Taxe foncière',d.taxe_fonciere_an!=null?Math.round(d.taxe_fonciere_an)+' €/an':null],
     ['DPE',d.dpe],['État',d.etat],['Étage',d.etage],['Année',d.annee_construction]];
-  $('ex-title').textContent=d.titre||'Annonce analysée';
-  $('ex-tag').textContent='Extrait par IA';
   $('ex-dl').innerHTML=rows.filter(x=>x[1]!=null&&x[1]!=='').map(x=>'<div><dt>'+esc(x[0])+' </dt><dd>'+esc(String(x[1]))+'</dd></div>').join('');
+  const need=[['prix_affiche','le prix affiché'],['surface_m2','la surface'],['dpe','le DPE'],
+    ['charges_mois','les charges de copropriété'],['taxe_fonciere_an','la taxe foncière'],['etat','l\'état général / travaux']];
+  const miss=need.filter(x=>d[x[0]]==null||d[x[0]]==='');
+  let html='';
+  if(miss.length)html+='<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><span class="muted" style="align-self:center">Sense check :</span>'+miss.map(x=>'<span class="pill warn">à récupérer : '+esc(x[1])+'</span>').join('')+'</div>';
+  else html+='<div style="margin-top:10px"><span class="pill">Sense check : toutes les infos clés sont là ✓</span></div>';
+  if(/^[FG]/i.test(String(d.dpe||'')))html+='<div style="margin-top:8px"><span class="pill neg">DPE '+esc(String(d.dpe).toUpperCase())+' — passoire énergétique : rénovation énergétique à budgéter</span></div>';
+  const trav=model.find(x=>x.id==='trav');
+  if(trav&&trav.lines.some(l=>/forfait de départ/i.test(l[0])))html+='<div style="margin-top:8px"><span class="pill gray">Travaux initialisés à 1 500 €/m² (forfait à affiner poste par poste)</span></div>';
+  $('ex-missing').innerHTML=html;
   $('extract').style.display='block';
-  build();
 }
 function exportJSON(){const data={p:params(),model};const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,1));a.download=(params().name||'simulation')+'.json';a.click()}
 function importJSON(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);PARAMS.forEach(k=>{if(d.p&&d.p[k]!==undefined)$(k).value=d.p[k]});if(d.model)model=d.model;build();$('msg').textContent='Simulation importée.'}catch(e){$('msg').textContent='Fichier illisible : vérifiez que c\'est un export de cet outil.'}};rd.readAsText(f);inp.value=''}
