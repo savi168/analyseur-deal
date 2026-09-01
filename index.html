@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Analyseur de deal — marchand de biens (Paris)</title>
+<title>Analyseur de deal — marchand de biens</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -13,10 +13,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Instrument Sans
 h1,h2,h3{font-weight:500;margin:0}
 h1{font-size:20px}
 h2{font-size:17px}
-input,select,button{font:inherit;color:inherit}
-input[type=text],input[type=number],input[type=url],select{height:34px;border:1px solid var(--line-2);border-radius:var(--radius);background:#fff;padding:0 10px;width:100%}
+h3{font-size:14px;color:var(--ink-2)}
+a{color:var(--accent)}
+input,select,button,textarea{font:inherit;color:inherit}
+input[type=text],input[type=number],input[type=url],input[type=date],select,textarea{border:1px solid var(--line-2);border-radius:var(--radius);background:#fff;padding:0 10px;width:100%}
+input[type=text],input[type=number],input[type=url],input[type=date],select{height:34px}
+textarea{padding:8px 10px;resize:vertical}
 input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
-input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
 button{height:34px;border:1px solid var(--line-2);background:#fff;border-radius:var(--radius);padding:0 12px;cursor:pointer}
 button:hover{background:var(--bg)}
 button.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -32,14 +36,16 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .strip .marge{font-size:26px}
 .strip .pos{color:#7FD6A5}.strip .neg{color:#F19A9A}
 .strip .spacer{flex:1}
+.strip button.ghost{color:#A9B7BB}.strip button.ghost:hover{color:#fff}
 .wrap{max-width:1040px;margin:0 auto;padding:24px 24px 80px}
 .head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:20px;flex-wrap:wrap}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:18px}
-.panel-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px}
+.panel-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap}
 .grid{display:grid;gap:10px 20px}
 .g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
 .field{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:10px;align-items:center}
 .field label{font-size:13px;color:var(--ink-2)}
+.field.wide{grid-template-columns:130px minmax(0,1fr)}
 .drop{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:12px}
 .drop div{border:1px dashed var(--line-2);border-radius:var(--radius);padding:14px;text-align:center;font-size:13px;color:var(--ink-2);cursor:pointer}
 .drop div:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
@@ -56,6 +62,10 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .tabs button{font-size:13px}
 .tabs button.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.bigtabs{display:flex;gap:0;margin-bottom:18px;border-bottom:1px solid var(--line-2)}
+.bigtabs button{border:none;background:none;border-radius:0;height:40px;padding:0 16px;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.bigtabs button.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:500}
+.bigtabs button:hover{background:none;color:var(--ink)}
 .recap{font-size:14px}
 .recap div{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)}
 .recap div.total{border-top:1px solid var(--ink);font-weight:500}
@@ -66,48 +76,80 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .pill{font-size:12px;padding:3px 10px;border-radius:999px;white-space:nowrap;background:var(--accent-bg);color:var(--accent)}
 .pill.neg{background:var(--neg-bg);color:var(--neg)}
 .pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.gray{background:var(--bg);color:var(--ink-2);border:1px solid var(--line)}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .note{font-size:13px;color:var(--ink-2);margin:10px 0 0}
-.deals{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.deal-chip{font-size:13px;border:1px solid var(--line-2);border-radius:999px;padding:4px 12px;background:#fff;cursor:pointer}
-.deal-chip.on{border-color:var(--ink);background:var(--ink);color:#fff}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:8px}
+.card:hover{border-color:var(--accent)}
+.card .t{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.card .t b{font-weight:500;font-size:16px}
+.card .kpis{display:flex;gap:18px;margin-top:2px}
+.card .kpis .k{font-size:12px;color:var(--ink-3)}
+.card .kpis .v{font-size:15px;font-weight:500}
+.simrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.simrow .n{font-weight:500;cursor:pointer}
+.simrow .n:hover{color:var(--accent)}
+.simrow .meta{font-size:13px;color:var(--ink-2)}
+.task{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+.task input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent)}
+.task.done span.txt{color:var(--ink-3);text-decoration:line-through}
+.task .ph{font-size:11px;color:var(--ink-3);min-width:74px;text-transform:uppercase;letter-spacing:.04em}
+.budget{width:100%;border-collapse:collapse;font-size:14px}
+.budget th{font-size:12px;font-weight:500;color:var(--ink-2);text-align:right;padding:4px 8px;border-bottom:1px solid var(--line)}
+.budget th:first-child{text-align:left}
+.budget td{padding:6px 8px;text-align:right;border-top:1px solid var(--line)}
+.budget td:first-child{text-align:left}
+.budget input{width:120px;height:30px}
+.budget tr.total td{font-weight:500;border-top:1px solid var(--ink)}
+.jentry{padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.jentry .d{font-size:12px;color:var(--ink-3)}
+.back{font-size:13px;color:var(--ink-2);text-decoration:none;display:inline-block;margin-bottom:8px}
+.back:hover{color:var(--ink)}
+.empty{border:1px dashed var(--line-2);border-radius:10px;padding:40px;text-align:center;color:var(--ink-2)}
 @media (max-width:640px){.bar{grid-template-columns:1fr}.bar span:last-child{text-align:left}.lines th:nth-child(4),.lines td.amount{display:none}.strip{padding:10px 16px;gap:16px}.wrap{padding:16px 16px 60px}}
-@media (prefers-reduced-motion:no-preference){.strip .v{transition:color .2s}}
 </style>
 </head>
 <body>
 
+<!-- ============ VUE LISTE DES BIENS ============ -->
+<div id="view-list" hidden><div class="wrap">
+  <div class="head">
+    <div><h1>Mes biens</h1><p class="muted" style="margin:2px 0 0">Un bien regroupe ses simulations et, une fois le deal ouvert, son suivi de projet.</p></div>
+    <button class="primary" onclick="newBien()">+ Nouveau bien</button>
+  </div>
+  <div class="cards" id="cards"></div>
+  <p class="note">Les données sont enregistrées dans ce navigateur uniquement (localStorage). Pensez à exporter vos simulations importantes.</p>
+</div></div>
+
+<!-- ============ VUE FICHE BIEN ============ -->
+<div id="view-bien" hidden><div class="wrap" id="bien-wrap"></div></div>
+
+<!-- ============ VUE SIMULATION (analyseur) ============ -->
+<div id="view-sim" hidden>
 <div class="strip" role="status" aria-live="polite">
-  <div><div class="k">Deal</div><div class="v" id="s-name">Nouveau deal</div></div>
+  <div><div class="k" id="s-bien">Bien</div><div class="v" id="s-name">Simulation</div></div>
   <div><div class="k">Coût total</div><div class="v num" id="s-cout">–</div></div>
   <div><div class="k">Revente nette</div><div class="v num" id="s-vente">–</div></div>
   <div><div class="k">Marge nette après impôt</div><div class="v marge num" id="s-marge">–</div></div>
   <div><div class="k">ROI fonds propres</div><div class="v num" id="s-roi">–</div></div>
   <div class="spacer"></div>
-  <div class="actions"><button onclick="saveDeal()" class="primary">Enregistrer</button></div>
+  <div class="actions"><button class="ghost" onclick="backToBien()">‹ Retour au bien</button><button onclick="saveSim(true)" class="primary">Enregistrer</button></div>
 </div>
 
 <div class="wrap">
-  <div class="head">
-    <div><h1>Analyseur de deal</h1><p class="muted" style="margin:2px 0 0">Coût complet d'une opération d'achat-rénovation-revente et marge attendue.</p></div>
-    <div class="deals" id="deals"></div>
-  </div>
-
   <section class="panel">
-    <div class="panel-h"><h2>1. L'offre</h2><span class="muted">Import automatique simulé pour l'instant</span></div>
-    <div class="drop">
-      <div onclick="simulate('url')"><b>Coller une URL</b>SeLoger, Leboncoin, PAP, Bien'ici</div>
-      <div onclick="simulate('pdf')"><b>Déposer un PDF</b>plaquette, expertise, PV d'AG</div>
-      <div onclick="simulate('manual')"><b>Saisie manuelle</b>ou photo d'annonce</div>
-    </div>
+    <div class="panel-h"><h2>1. L'annonce</h2><span class="muted" id="src-state"></span></div>
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <input type="url" id="src" placeholder="https://www.seloger.com/annonces/achat/...">
-      <button onclick="simulate('url')">Extraire</button>
+      <button onclick="saveUrl()">Enregistrer l'URL</button>
+      <button onclick="simulate('url')">Extraction démo</button>
     </div>
     <div class="extract" id="extract">
-      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong style="font-weight:500" id="ex-title"></strong><span class="pill" id="ex-tag"></span></div>
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong style="font-weight:500" id="ex-title"></strong><span class="pill warn" id="ex-tag"></span></div>
       <dl><div><dt>Surface Carrez </dt><dd>65 m²</dd></div><div><dt>Prix demandé </dt><dd>650 000 € FAI</dd></div><div><dt>Année </dt><dd>1930</dd></div><div><dt>État </dt><dd>à rénover</dd></div><div><dt>Charges </dt><dd>180 €/mois</dd></div><div><dt>Taxe foncière </dt><dd>1 200 €/an</dd></div><div><dt>DPE </dt><dd>F</dd></div><div><dt>Étage </dt><dd>4e sans ascenseur</dd></div></dl>
     </div>
+    <p class="note">L'extraction automatique depuis SeLoger / Leboncoin nécessite un serveur (ces sites bloquent la lecture directe depuis un navigateur tiers). En attendant, l'URL est enregistrée sur la fiche du bien et le bouton « Extraction démo » remplit des données d'exemple.</p>
   </section>
 
   <section class="panel">
@@ -115,7 +157,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <div class="tabs" style="margin:0"><span class="muted" style="align-self:center">Scénario</span><button onclick="scenario('pess')">Pessimiste</button><button class="on" onclick="scenario('base')">Réaliste</button><button onclick="scenario('opt')">Optimiste</button></div>
     </div>
     <div class="grid g3">
-      <div class="field"><label for="name">Nom du deal</label><input type="text" id="name" value="Paris 11e 3p" style="text-align:left"></div>
+      <div class="field"><label for="name">Nom de la simulation</label><input type="text" id="name" value="Base" style="text-align:left"></div>
       <div class="field"><label for="prix">Prix d'achat (EUR)</label><input type="number" id="prix" value="650000" step="10000"></div>
       <div class="field"><label for="surf">Surface (m²)</label><input type="number" id="surf" value="65" step="1"></div>
       <div class="field"><label for="mois">Durée de l'opération (mois)</label><input type="number" id="mois" value="12" step="1"></div>
@@ -143,17 +185,25 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   <section class="panel">
     <div class="panel-h"><h2>Données</h2></div>
     <div class="actions">
-      <button onclick="exportJSON()">Exporter le deal (JSON)</button>
+      <button onclick="exportJSON()">Exporter la simulation (JSON)</button>
       <button onclick="document.getElementById('imp').click()">Importer un JSON</button>
       <input type="file" id="imp" accept="application/json" style="display:none" onchange="importJSON(this)">
       <button onclick="resetModel()">Réinitialiser les postes par défaut</button>
     </div>
-    <p class="note" id="msg">Les deals sont enregistrés dans ce navigateur uniquement. Droits réduits à 0,715 % : régime marchand de biens (art. 1115 CGI), sous réserve de revente dans les 5 ans.</p>
+    <p class="note" id="msg">Droits réduits à 0,715 % : régime marchand de biens (art. 1115 CGI), sous réserve de revente dans les 5 ans.</p>
   </section>
+</div>
 </div>
 
 <script>
+'use strict';
 const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmt=n=>Math.round(n).toLocaleString('fr-FR')+' €';
+const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const uid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+/* ---------- moteur de calcul (inchangé) ---------- */
 const U={chf:'EUR fixe',m2:'EUR / m²',pctPrix:'% prix d\'achat',pctTrav:'% des travaux',mois:'EUR / mois',pctDette:'% de la dette',pctAn:'% / an sur dette',pctVente:'% de la vente'};
 const DEFAULT=()=>[
  {id:'acq',name:'Acquisition',lines:[['Droits de mutation réduits (engagement de revendre)','pctPrix',0.715],['Contribution de sécurité immobilière','pctPrix',0.1],['Émoluments et débours du notaire','pctPrix',1],['Frais d\'agence à l\'achat','pctPrix',0],['Diagnostics et audits avant achat','chf',800]]},
@@ -162,12 +212,7 @@ const DEFAULT=()=>[
  {id:'port',name:'Portage',lines:[['Charges de copropriété','mois',180],['Taxe foncière (lissée)','mois',100],['Assurance PNO / chantier','mois',40],['Électricité et eau chantier','mois',60]]},
  {id:'rev',name:'Revente',lines:[['Agence immobilière','pctVente',4],['Diagnostics obligatoires (DPE, amiante, plomb…)','chf',500],['Home staging et photos','chf',3000],['Annonces / marketing','chf',500]]}
 ];
-let model=DEFAULT();
 const PARAMS=['name','prix','surf','mois','pv','fp','tax'];
-const fmt=n=>Math.round(n).toLocaleString('fr-FR')+' €';
-const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-
-function params(){const p={};PARAMS.forEach(k=>p[k]=k==='name'?$(k).value:(+$(k).value||0));return p}
 function lineVal(l,c){const v=l[2]||0;switch(l[1]){case'chf':return v;case'm2':return v*c.surf;case'pctPrix':return v/100*c.prix;case'pctTrav':return v/100*c.travBase;case'mois':return v*c.mois;case'pctDette':return v/100*c.dette;case'pctAn':return v/100*c.dette*c.mois/12;case'pctVente':return v/100*c.brut}return 0}
 function compute(p,m){
   const c=Object.assign({},p);c.brut=c.pv*c.surf;
@@ -184,22 +229,215 @@ function compute(p,m){
   return {c,tots,vals,cout,revCosts,venteNette,gain,impot,marge,be};
 }
 
+/* ---------- base de données locale ---------- */
+const DB_KEY='mdb_v2';
+const STATUS=[['analyse','Analyse'],['offre','Offre en cours'],['compromis','Sous compromis'],['travaux','Acheté / travaux'],['vente','En vente'],['vendu','Vendu'],['abandon','Abandonné']];
+const STATUS_OPEN=['offre','compromis','travaux','vente'];
+const TASKS=()=>[
+ {ph:'Offre',t:'Faire une offre écrite',done:false},{ph:'Offre',t:'Négociation du prix',done:false},
+ {ph:'Compromis',t:'Signature du compromis',done:false},{ph:'Compromis',t:'Dépôt du dossier de financement',done:false},{ph:'Compromis',t:'Offre de prêt obtenue',done:false},{ph:'Compromis',t:'Purge du droit de préemption',done:false},
+ {ph:'Acte',t:'Signature de l\'acte authentique',done:false},
+ {ph:'Travaux',t:'Consultation des entreprises (3 devis)',done:false},{ph:'Travaux',t:'Déclaration préalable / autorisations',done:false},{ph:'Travaux',t:'Démarrage du chantier',done:false},{ph:'Travaux',t:'Réception des travaux',done:false},
+ {ph:'Revente',t:'Photos et home staging',done:false},{ph:'Revente',t:'Mise en vente',done:false},{ph:'Revente',t:'Offre d\'achat acceptée',done:false},{ph:'Revente',t:'Signature de l\'acte de revente',done:false}
+];
+let DB=store.get(DB_KEY)||{biens:{}};
+function persist(){store.set(DB_KEY,DB)}
+function newBienObj(name){return {id:uid('b'),name:name||'Nouveau bien',url:'',address:'',notes:'',status:'analyse',createdAt:Date.now(),sims:{},project:{refSim:null,tasks:TASKS(),journal:[],reel:{}}}}
+function newSimObj(name,p,model){return {id:uid('s'),createdAt:Date.now(),p:p||{name:name||'Base',prix:650000,surf:65,mois:12,pv:12000,fp:20,tax:25},model:model||DEFAULT()}}
+
+/* migration depuis l'ancienne version (deals à plat) */
+(function migrate(){
+  const old=store.get('deals');
+  if(old&&!store.get('mdb_migrated')){
+    Object.keys(old).forEach(n=>{
+      const b=newBienObj(n);const s=newSimObj('Base',Object.assign({},old[n].p,{name:'Base'}),old[n].model);
+      b.sims[s.id]=s;b.project.refSim=s.id;DB.biens[b.id]=b;
+    });
+    persist();store.set('mdb_migrated',1);
+  }
+})();
+
+/* ---------- routage ---------- */
+let curBid=null,curSid=null,bienTab='sims';
+function route(){
+  const h=location.hash.replace(/^#\/?/,'').split('/');
+  ['view-list','view-bien','view-sim'].forEach(v=>$(v).hidden=true);
+  if(h[0]==='bien'&&DB.biens[h[1]]){curBid=h[1];$('view-bien').hidden=false;renderBien();}
+  else if(h[0]==='sim'&&DB.biens[h[1]]&&DB.biens[h[1]].sims[h[2]]){curBid=h[1];curSid=h[2];$('view-sim').hidden=false;loadSim();}
+  else{curBid=curSid=null;$('view-list').hidden=false;renderList();}
+  window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',route);
+
+/* ---------- vue liste ---------- */
+function margeOf(sim){try{return compute(sim.p,sim.model).marge}catch(e){return 0}}
+function statusPill(st){const lab=(STATUS.find(x=>x[0]===st)||STATUS[0])[1];const cls=st==='vendu'?'':st==='abandon'?'neg':STATUS_OPEN.includes(st)?'warn':'gray';return '<span class="pill '+cls+'">'+lab+'</span>'}
+function renderList(){
+  const bs=Object.values(DB.biens).sort((a,b)=>b.createdAt-a.createdAt);
+  if(!bs.length){$('cards').innerHTML='<div class="empty" style="grid-column:1/-1">Aucun bien pour l\'instant.<br><br><button class="primary" onclick="newBien()">Créer mon premier bien</button></div>';return}
+  $('cards').innerHTML=bs.map(b=>{
+    const sims=Object.values(b.sims);
+    const best=sims.length?Math.max(...sims.map(margeOf)):null;
+    return `<div class="card" onclick="location.hash='#/bien/${b.id}'">
+      <div class="t"><b>${esc(b.name)}</b>${statusPill(b.status)}</div>
+      ${b.address?`<span class="muted">${esc(b.address)}</span>`:''}
+      ${b.url?`<span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔗 ${esc(b.url.replace(/^https?:\/\//,''))}</span>`:''}
+      <div class="kpis">
+        <div><div class="k">Simulations</div><div class="v num">${sims.length}</div></div>
+        <div><div class="k">Meilleure marge</div><div class="v num" style="color:${best==null?'var(--ink-3)':best>=0?'var(--pos)':'var(--neg)'}">${best==null?'–':fmt(best)}</div></div>
+      </div>
+    </div>`}).join('');
+}
+function newBien(){
+  const name=prompt('Nom du bien (ex : Paris 11e — rue Oberkampf)');
+  if(name===null)return;
+  const b=newBienObj(name.trim()||'Nouveau bien');
+  const s=newSimObj('Base');b.sims[s.id]=s;b.project.refSim=s.id;
+  DB.biens[b.id]=b;persist();location.hash='#/bien/'+b.id;
+}
+
+/* ---------- vue fiche bien ---------- */
+function curB(){return DB.biens[curBid]}
+function renderBien(){
+  const b=curB();if(!b)return;
+  const sims=Object.values(b.sims).sort((a,c)=>a.createdAt-c.createdAt);
+  const open=STATUS_OPEN.includes(b.status)||b.status==='vendu';
+  $('bien-wrap').innerHTML=`
+  <a class="back" href="#/">‹ Tous les biens</a>
+  <div class="head">
+    <div><h1>${esc(b.name)}</h1><p class="muted" style="margin:2px 0 0">${b.address?esc(b.address):'Adresse non renseignée'}</p></div>
+    ${statusPill(b.status)}
+  </div>
+  <section class="panel">
+    <div class="panel-h"><h2>Fiche du bien</h2><button class="ghost" onclick="delBien()">Supprimer le bien</button></div>
+    <div class="grid" style="grid-template-columns:1fr;gap:10px">
+      <div class="field wide"><label>Nom</label><input type="text" value="${esc(b.name)}" oninput="updB('name',this.value)"></div>
+      <div class="field wide"><label>Adresse</label><input type="text" value="${esc(b.address)}" oninput="updB('address',this.value)"></div>
+      <div class="field wide"><label>URL de l'annonce</label><div style="display:flex;gap:8px"><input type="url" value="${esc(b.url)}" oninput="updB('url',this.value)" placeholder="https://...">${b.url?`<a href="${esc(b.url)}" target="_blank" rel="noopener"><button type="button">Ouvrir ↗</button></a>`:''}</div></div>
+      <div class="field wide"><label>Statut du deal</label><select onchange="updB('status',this.value);renderBien()">${STATUS.map(s=>`<option value="${s[0]}"${s[0]===b.status?' selected':''}>${s[1]}</option>`).join('')}</select></div>
+      <div class="field wide"><label>Notes</label><textarea rows="2" oninput="updB('notes',this.value)">${esc(b.notes)}</textarea></div>
+    </div>
+  </section>
+  <div class="bigtabs">
+    <button class="${bienTab==='sims'?'on':''}" onclick="bienTab='sims';renderBien()">Simulations (${sims.length})</button>
+    <button class="${bienTab==='projet'?'on':''}" onclick="bienTab='projet';renderBien()">Suivi de projet${open?'':' (deal non ouvert)'}</button>
+  </div>
+  <div id="bien-tab"></div>`;
+  if(bienTab==='sims')renderSimsTab(sims);else renderProjetTab(b,sims);
+}
+function updB(k,v){const b=curB();if(!b)return;b[k]=v;persist();if(k==='name'){document.querySelector('#bien-wrap h1').textContent=v||'Sans nom'}}
+function delBien(){const b=curB();if(!confirm('Supprimer « '+b.name+' » et toutes ses simulations ?'))return;delete DB.biens[curBid];persist();location.hash='#/'}
+
+function renderSimsTab(sims){
+  const b=curB();
+  $('bien-tab').innerHTML=`<section class="panel">
+    <div class="panel-h"><h2>Simulations</h2><button class="primary" onclick="newSim()">+ Nouvelle simulation</button></div>
+    ${sims.length?sims.map(s=>{
+      const m=margeOf(s),r=compute(s.p,s.model);
+      const roi=r.c.fondsPropres?(m/r.c.fondsPropres*100).toFixed(1)+' %':'–';
+      return `<div class="simrow">
+        <span class="n" onclick="location.hash='#/sim/${b.id}/${s.id}'">${esc(s.p.name||'Sans nom')}</span>
+        <span class="meta num">Marge <b style="color:${m>=0?'var(--pos)':'var(--neg)'}">${fmt(m)}</b> · ROI ${roi} · ${s.p.mois} mois${b.project.refSim===s.id?' · <span class="pill">référence projet</span>':''}</span>
+        <span class="actions">
+          <button onclick="location.hash='#/sim/${b.id}/${s.id}'">Ouvrir</button>
+          <button onclick="dupSim('${s.id}')">Dupliquer</button>
+          <button class="ghost" onclick="delSim('${s.id}')">✕</button>
+        </span>
+      </div>`}).join(''):'<p class="muted">Aucune simulation. Créez-en une pour analyser ce bien.</p>'}
+    <p class="note">Comparez plusieurs hypothèses (prix négocié, niveau de travaux, durée…) en dupliquant une simulation.</p>
+  </section>`;
+}
+function newSim(){const b=curB();const s=newSimObj('Simulation '+(Object.keys(b.sims).length+1));if(!b.project.refSim)b.project.refSim=s.id;b.sims[s.id]=s;persist();location.hash='#/sim/'+b.id+'/'+s.id}
+function dupSim(sid){const b=curB();const src=b.sims[sid];if(!src)return;const s=newSimObj();s.p=JSON.parse(JSON.stringify(src.p));s.p.name=src.p.name+' (copie)';s.model=JSON.parse(JSON.stringify(src.model));b.sims[s.id]=s;persist();renderBien()}
+function delSim(sid){const b=curB();if(!b.sims[sid])return;if(!confirm('Supprimer la simulation « '+(b.sims[sid].p.name||'')+' » ?'))return;delete b.sims[sid];if(b.project.refSim===sid)b.project.refSim=Object.keys(b.sims)[0]||null;persist();renderBien()}
+
+/* ---------- suivi de projet ---------- */
+function renderProjetTab(b,sims){
+  const ref=b.project.refSim&&b.sims[b.project.refSim]?b.sims[b.project.refSim]:null;
+  const r=ref?compute(ref.p,ref.model):null;
+  const done=b.project.tasks.filter(t=>t.done).length,tot=b.project.tasks.length;
+  const rows=r?[['prix','Prix d\'achat',r.c.prix],['acq','Acquisition',r.tots.acq],['trav','Travaux',r.tots.trav],['fin','Financement',r.tots.fin],['port','Portage',r.tots.port],['rev','Frais de revente',r.revCosts]]:[];
+  let prevTot=0,reelTot=0;
+  const bodyRows=rows.map(x=>{
+    const reel=b.project.reel[x[0]];const rv=reel===''||reel==null?null:+reel;
+    prevTot+=x[2];if(rv!=null)reelTot+=rv;
+    const d=rv==null?null:rv-x[2];
+    return `<tr><td>${x[1]}</td><td class="num">${fmt(x[2])}</td><td><input type="number" step="1000" value="${reel==null?'':reel}" placeholder="—" oninput="setReel('${x[0]}',this.value)"></td><td class="num" id="delta-${x[0]}" style="color:${d==null?'var(--ink-3)':d>0?'var(--neg)':'var(--pos)'}">${d==null?'–':(d>0?'+':'')+fmt(d)}</td></tr>`;
+  }).join('');
+  $('bien-tab').innerHTML=`
+  ${STATUS_OPEN.includes(b.status)||b.status==='vendu'?'':'<section class="panel" style="background:var(--warn-bg);border-color:var(--warn-bg)"><span style="font-size:14px;color:var(--warn)">Ce deal est encore en analyse — passez le statut à « Offre en cours » (ou plus) quand il s\'ouvre. Vous pouvez déjà préparer le suivi ci-dessous.</span></section>'}
+  <section class="panel">
+    <div class="panel-h"><h2>Avancement</h2><span class="muted num">${done} / ${tot} étapes</span></div>
+    <div class="bar" style="grid-template-columns:1fr 60px;margin-bottom:14px"><div class="t"><i style="width:${tot?Math.max(1,done/tot*100):0}%"></i></div><span class="num" style="text-align:right">${tot?Math.round(done/tot*100):0} %</span></div>
+    ${b.project.tasks.map((t,i)=>`<div class="task ${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i})"><span class="ph">${esc(t.ph)}</span><span class="txt" style="flex:1">${esc(t.t)}</span><button class="ghost" onclick="delTask(${i})">✕</button></div>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:12px"><input type="text" id="task-new" placeholder="Nouvelle étape…" onkeydown="if(event.key==='Enter')addTask()"><button onclick="addTask()">Ajouter</button></div>
+  </section>
+  <section class="panel">
+    <div class="panel-h"><h2>Budget : prévu vs réel</h2>
+      <span class="muted">Référence : <select style="width:auto;height:30px" onchange="setRef(this.value)">${sims.map(s=>`<option value="${s.id}"${ref&&ref.id===s.id?' selected':''}>${esc(s.p.name||'Sans nom')}</option>`).join('')}</select></span>
+    </div>
+    ${r?`<div style="overflow-x:auto"><table class="budget"><thead><tr><th>Poste</th><th>Prévu (simulation)</th><th>Réel engagé</th><th>Écart</th></tr></thead><tbody>${bodyRows}
+    <tr class="total"><td>Total</td><td class="num">${fmt(prevTot)}</td><td class="num" id="reel-tot">${fmt(reelTot)}</td><td class="num" id="delta-tot" style="color:${reelTot-0>0&&reelTot>prevTot?'var(--neg)':'var(--ink)'}">${fmt(reelTot-rows.filter(x=>b.project.reel[x[0]]!=null&&b.project.reel[x[0]]!=='').reduce((s,x)=>s+x[2],0))}</td></tr></tbody></table></div>
+    <p class="note">Saisissez le réel au fil du chantier ; l'écart se calcule par rapport à la simulation de référence (écart total sur les postes renseignés uniquement).</p>`:'<p class="muted">Créez d\'abord une simulation pour servir de budget de référence.</p>'}
+  </section>
+  <section class="panel">
+    <div class="panel-h"><h2>Journal du projet</h2></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><input type="text" id="j-new" placeholder="Ex : compromis signé chez Maître Dupont, condition suspensive de prêt 45 j" onkeydown="if(event.key==='Enter')addJournal()"><button onclick="addJournal()">Ajouter</button></div>
+    ${b.project.journal.length?b.project.journal.map((j,i)=>`<div class="jentry"><span class="d">${new Date(j.d).toLocaleDateString('fr-FR')}</span> — ${esc(j.t)} <button class="ghost" onclick="delJournal(${i})">✕</button></div>`).join(''):'<p class="muted">Aucune entrée pour l\'instant.</p>'}
+  </section>`;
+}
+function toggleTask(i){const b=curB();b.project.tasks[i].done=!b.project.tasks[i].done;persist();renderBien()}
+function delTask(i){const b=curB();b.project.tasks.splice(i,1);persist();renderBien()}
+function addTask(){const b=curB();const v=$('task-new').value.trim();if(!v)return;b.project.tasks.push({ph:'Autre',t:v,done:false});persist();renderBien()}
+function setRef(sid){const b=curB();b.project.refSim=sid;persist();renderBien()}
+function setReel(k,v){const b=curB();b.project.reel[k]=v;persist();
+  const ref=b.sims[b.project.refSim];if(!ref)return;const r=compute(ref.p,ref.model);
+  const prev={prix:r.c.prix,acq:r.tots.acq,trav:r.tots.trav,fin:r.tots.fin,port:r.tots.port,rev:r.revCosts};
+  const d=v===''?null:+v-prev[k];
+  const cell=$('delta-'+k);if(cell){cell.textContent=d==null?'–':(d>0?'+':'')+fmt(d);cell.style.color=d==null?'var(--ink-3)':d>0?'var(--neg)':'var(--pos)'}
+  let rt=0,dt=0;Object.keys(prev).forEach(key=>{const rv=b.project.reel[key];if(rv!=null&&rv!==''){rt+=+rv;dt+=(+rv-prev[key])}});
+  const t1=$('reel-tot');if(t1)t1.textContent=fmt(rt);
+  const t2=$('delta-tot');if(t2){t2.textContent=(dt>0?'+':'')+fmt(dt);t2.style.color=dt>0?'var(--neg)':'var(--ink)'}
+}
+function addJournal(){const b=curB();const v=$('j-new').value.trim();if(!v)return;b.project.journal.unshift({d:Date.now(),t:v});persist();renderBien()}
+function delJournal(i){const b=curB();b.project.journal.splice(i,1);persist();renderBien()}
+
+/* ---------- vue simulation (analyseur) ---------- */
+let model=DEFAULT();
+function curS(){const b=curB();return b?b.sims[curSid]:null}
+function params(){const p={};PARAMS.forEach(k=>p[k]=k==='name'?$(k).value:(+$(k).value||0));return p}
+function loadSim(){
+  const b=curB(),s=curS();if(!b||!s)return;
+  $('s-bien').textContent=b.name;
+  PARAMS.forEach(k=>{if(s.p[k]!==undefined)$(k).value=s.p[k]});
+  model=JSON.parse(JSON.stringify(s.model));
+  $('src').value=b.url||'';
+  $('src-state').textContent=b.url?'URL enregistrée sur la fiche du bien':'Aucune URL enregistrée';
+  $('extract').style.display='none';
+  build();
+}
+function backToBien(){location.hash='#/bien/'+curBid}
+function saveUrl(){const b=curB();if(!b)return;b.url=$('src').value.trim();persist();$('src-state').textContent=b.url?'URL enregistrée sur la fiche du bien':'Aucune URL enregistrée';$('msg').textContent=b.url?'URL enregistrée sur la fiche « '+b.name+' ».':'URL effacée.'}
+function saveSim(explicit){
+  const b=curB(),s=curS();if(!b||!s)return;
+  s.p=params();s.model=model;persist();
+  if(explicit){$('msg').textContent='Simulation « '+(s.p.name||'Sans nom')+' » enregistrée.'}
+}
 function build(){
-  $('cats').innerHTML=model.map((cat,ci)=>`<section class="panel"><div class="panel-h"><h2>${cat.name}</h2><span class="num" id="tot-${cat.id}" style="font-weight:500"></span></div>
+  $('cats').innerHTML=model.map((cat,ci)=>`<section class="panel"><div class="panel-h"><h2>${esc(cat.name)}</h2><span class="num" id="tot-${cat.id}" style="font-weight:500"></span></div>
   <table class="lines"><thead><tr><th>Poste</th><th class="r" style="width:110px">Valeur</th><th style="width:150px">Unité</th><th class="r" style="width:110px">Montant</th><th style="width:34px"></th></tr></thead><tbody>
-  ${cat.lines.map((l,li)=>`<tr><td><input type="text" value="${l[0].replace(/"/g,'&quot;')}" oninput="model[${ci}].lines[${li}][0]=this.value" style="text-align:left"></td><td><input type="number" value="${l[2]}" step="any" oninput="model[${ci}].lines[${li}][2]=parseFloat(this.value)||0;render()"></td><td><select onchange="model[${ci}].lines[${li}][1]=this.value;render()">${Object.keys(U).map(k=>`<option value="${k}"${k===l[1]?' selected':''}>${U[k]}</option>`).join('')}</select></td><td class="r amount num" id="v-${ci}-${li}"></td><td><button class="ghost" aria-label="Supprimer la ligne" onclick="model[${ci}].lines.splice(${li},1);build()">✕</button></td></tr>`).join('')}
+  ${cat.lines.map((l,li)=>`<tr><td><input type="text" value="${esc(l[0])}" oninput="model[${ci}].lines[${li}][0]=this.value" style="text-align:left"></td><td><input type="number" value="${l[2]}" step="any" oninput="model[${ci}].lines[${li}][2]=parseFloat(this.value)||0;render()"></td><td><select onchange="model[${ci}].lines[${li}][1]=this.value;render()">${Object.keys(U).map(k=>`<option value="${k}"${k===l[1]?' selected':''}>${U[k]}</option>`).join('')}</select></td><td class="r amount num" id="v-${ci}-${li}"></td><td><button class="ghost" aria-label="Supprimer la ligne" onclick="model[${ci}].lines.splice(${li},1);build()">✕</button></td></tr>`).join('')}
   </tbody></table>
   <div style="margin-top:10px"><button onclick="model[${ci}].lines.push(['Nouvelle ligne','chf',0]);build()">+ Ajouter une ligne</button></div></section>`).join('');
   render();
 }
-
 function render(){
   const p=params(),r=compute(p,model);
-  $('s-name').textContent=p.name||'Nouveau deal';
+  $('s-name').textContent=p.name||'Simulation';
   $('s-cout').textContent=fmt(r.cout);$('s-vente').textContent=fmt(r.venteNette);
   const m=$('s-marge');m.textContent=fmt(r.marge)+(r.cout?'  ·  '+(r.marge/r.cout*100).toFixed(1)+' %':'');m.className='v marge num '+(r.marge>=0?'pos':'neg');
   $('s-roi').textContent=r.c.fondsPropres?(r.marge/r.c.fondsPropres*100).toFixed(1)+' %':'–';
-  model.forEach((cat,ci)=>{$('tot-'+cat.id).textContent=fmt(r.tots[cat.id]);cat.lines.forEach((l,li)=>{const e=$(`v-${ci}-${li}`);if(e)e.textContent=Math.round(r.vals[cat.id][li]).toLocaleString('fr-FR')})});
+  model.forEach((cat,ci)=>{$('tot-'+cat.id).textContent=fmt(r.tots[cat.id]);cat.lines.forEach((l,li)=>{const e=$('v-'+ci+'-'+li);if(e)e.textContent=Math.round(r.vals[cat.id][li]).toLocaleString('fr-FR')})});
   $('r-be').textContent=Math.round(r.be).toLocaleString('fr-FR');
   const rows=[['Prix d\'achat',r.c.prix],['Acquisition',r.tots.acq],['Travaux',r.tots.trav],['Financement',r.tots.fin],['Portage',r.tots.port]];
   $('recap').innerHTML=rows.map(x=>`<div><span>${x[0]}</span><span class="num">${fmt(x[1])}</span></div>`).join('')+`<div class="total"><span>Coût total</span><span class="num">${fmt(r.cout)}</span></div><div><span>Prix de revente brut</span><span class="num">${fmt(r.c.brut)}</span></div><div><span>Frais de revente</span><span class="num">− ${fmt(r.revCosts)}</span></div><div><span>Impôt sur le résultat</span><span class="num">− ${fmt(r.impot)}</span></div><div class="total"><span>Marge nette</span><span class="num" style="color:${r.marge>=0?'var(--pos)':'var(--neg)'}">${fmt(r.marge)}</span></div><div><span>Fonds propres engagés</span><span class="num">${fmt(r.c.fondsPropres)}</span></div>`;
@@ -209,16 +447,15 @@ function render(){
   const tests=[
     ['Négocier le prix d\'achat −5 %',{prix:p.prix*0.95},null],
     ['Réduire la durée de 3 mois',{mois:Math.max(1,p.mois-3)},null],
-    ['Vendre sans courtier',null,m2=>m2.find(x=>x.id==='rev').lines.forEach(l=>{if(l[1]==='pctVente')l[2]=0})],
+    ['Vendre sans agence',null,m2=>m2.find(x=>x.id==='rev').lines.forEach(l=>{if(l[1]==='pctVente')l[2]=0})],
     ['Travaux −10 % (mise en concurrence)',null,m2=>m2.find(x=>x.id==='trav').lines.forEach(l=>{if(l[1]!=='pctTrav')l[2]*=0.9})],
     ['Revente +3 % (home staging, timing)',{pv:p.pv*1.03},null],
     ['Fonds propres 20 % (effet de levier sur ROI)',{fp:20},null],
     ['Dérapage travaux +20 % et +4 mois',{mois:p.mois+4},m2=>m2.find(x=>x.id==='trav').lines.forEach(l=>{if(l[1]!=='pctTrav')l[2]*=1.2})]
   ];
   $('opts').innerHTML=tests.map(t=>{const m2=JSON.parse(JSON.stringify(model));if(t[2])t[2](m2);const r2=compute(Object.assign({},p,t[1]||{}),m2);const d=r2.marge-base;const roi=r2.c.fondsPropres?(r2.marge/r2.c.fondsPropres*100).toFixed(0)+' %':'–';return `<div class="opt"><span>${t[0]}</span><span class="pill ${d<-1?'neg':''}">${d>=0?'+':'−'}${fmt(Math.abs(d))} · ROI ${roi}</span></div>`}).join('');
-  store.set('draft',{p,model});
+  saveSim(false);
 }
-
 function scenario(s){
   const p={pess:{mois:16,pv:11000},base:{mois:12,pv:12000},opt:{mois:9,pv:12800}}[s];
   const f={pess:1.2,base:1,opt:0.9}[s];
@@ -229,27 +466,16 @@ function scenario(s){
 }
 function simulate(mode){
   const e=$('extract');e.style.display='block';
-  $('ex-tag').textContent=mode==='pdf'?'Extrait du PDF':mode==='manual'?'Saisie manuelle':'Extrait de l\'annonce';
-  $('ex-title').textContent='Appartement 3 pièces · Paris 11e, Oberkampf';
-  $('name').value='Paris 11e 3p';$('prix').value=650000;$('surf').value=65;render();
+  $('ex-tag').textContent='Démo — extraction non connectée';
+  $('ex-title').textContent='Appartement 3 pièces · Paris 11e, Oberkampf (données d\'exemple)';
+  $('prix').value=650000;$('surf').value=65;render();
 }
-
-function dealsList(){return store.get('deals')||{}}
-function renderDeals(){
-  const d=dealsList(),cur=$('name').value;
-  $('deals').innerHTML=Object.keys(d).map(n=>`<span class="deal-chip ${n===cur?'on':''}" onclick="loadDeal('${n.replace(/'/g,"\\'")}')">${n}</span>`).join('')+(Object.keys(d).length?`<button class="ghost" onclick="deleteDeal()" aria-label="Supprimer le deal courant">Supprimer</button>`:'');
-}
-function saveDeal(){const p=params();if(!p.name){$('msg').textContent='Donnez un nom au deal avant d\'enregistrer.';return}const d=dealsList();d[p.name]={p,model};store.set('deals',d);renderDeals();$('msg').textContent='Deal « '+p.name+' » enregistré.'}
-function loadDeal(n){const d=dealsList()[n];if(!d)return;applyState(d);renderDeals()}
-function deleteDeal(){const d=dealsList(),n=$('name').value;if(!d[n])return;delete d[n];store.set('deals',d);renderDeals();$('msg').textContent='Deal supprimé.'}
-function applyState(d){PARAMS.forEach(k=>{if(d.p&&d.p[k]!==undefined)$(k).value=d.p[k]});if(d.model)model=d.model;build()}
-function exportJSON(){const data={p:params(),model};const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,1));a.download=(params().name||'deal')+'.json';a.click()}
-function importJSON(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{applyState(JSON.parse(rd.result));$('msg').textContent='Deal importé.'}catch(e){$('msg').textContent='Fichier illisible : vérifiez que c\'est un export de cet outil.'}};rd.readAsText(f);inp.value=''}
+function exportJSON(){const data={p:params(),model};const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,1));a.download=(params().name||'simulation')+'.json';a.click()}
+function importJSON(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);PARAMS.forEach(k=>{if(d.p&&d.p[k]!==undefined)$(k).value=d.p[k]});if(d.model)model=d.model;build();$('msg').textContent='Simulation importée.'}catch(e){$('msg').textContent='Fichier illisible : vérifiez que c\'est un export de cet outil.'}};rd.readAsText(f);inp.value=''}
 function resetModel(){model=DEFAULT();build();$('msg').textContent='Postes par défaut restaurés.'}
 
 PARAMS.forEach(k=>$(k).addEventListener('input',render));
-const draft=store.get('draft');if(draft)applyState(draft);else build();
-renderDeals();
+route();
 </script>
 </body>
 </html>
