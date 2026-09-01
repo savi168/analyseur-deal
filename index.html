@@ -178,7 +178,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <div class="field"><label for="prix">Prix d'achat (EUR)</label><input type="number" id="prix" value="650000" step="10000"></div>
       <div class="field"><label for="surf">Surface (m²)</label><input type="number" id="surf" value="65" step="1"></div>
       <div class="field"><label for="mois">Durée de l'opération (mois)</label><input type="number" id="mois" value="12" step="1"></div>
-      <div class="field"><label for="pv">Prix de revente (EUR/m²)</label><input type="number" id="pv" value="12000" step="100"></div>
+      <div class="field"><label for="pv">Prix de revente (EUR/m²)</label><input type="number" id="pv" value="11000" step="100"></div>
       <div class="field"><label for="fp">Fonds propres (%)</label><input type="number" id="fp" value="20" step="5"></div>
       <div class="field"><label for="tax">Impôt sur le résultat (IS, %)</label><input type="number" id="tax" value="25" step="1"></div>
     </div>
@@ -197,6 +197,24 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   <section class="panel">
     <div class="panel-h"><h2>4. Pistes d'optimisation</h2><span class="muted">Impact sur la marge nette</span></div>
     <div id="opts"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h"><h2>5. Scénario location</h2><span class="muted">Et si on gardait le bien en location au lieu de le revendre ?</span></div>
+    <div class="grid g3">
+      <div class="field"><label for="loym2">Loyer (EUR/m²/mois)</label><input type="number" id="loym2" value="30" step="1"></div>
+      <div class="field"><label for="vac">Vacance locative (%)</label><input type="number" id="vac" value="5" step="1"></div>
+      <div class="field"><label for="aploc">Apport (%)</label><input type="number" id="aploc" value="10" step="5"></div>
+      <div class="field"><label for="tcred">Taux du crédit (%/an)</label><input type="number" id="tcred" value="3.8" step="0.1"></div>
+      <div class="field"><label for="dcred">Durée du crédit (ans)</label><input type="number" id="dcred" value="25" step="1"></div>
+      <div class="field"><label for="gest">Gestion locative (% du loyer)</label><input type="number" id="gest" value="6" step="1"></div>
+      <div class="field"><label for="entr">Entretien (EUR/an)</label><input type="number" id="entr" value="600" step="100"></div>
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-top:16px">
+      <div class="recap" id="loc-recap"></div>
+      <div id="loc-verdict"></div>
+    </div>
+    <p class="note">Investissement = achat + frais d'acquisition + travaux (pas de frais de revente ni de portage d'opération). Charges de copro, taxe foncière et PNO reprises des postes de portage ci-dessus. Cash-flow avant impôt : la fiscalité (LMNP, foncier réel…) viendra plus tard.</p>
   </section>
 
   <section class="panel">
@@ -229,7 +247,7 @@ const DEFAULT=()=>[
  {id:'port',name:'Portage',lines:[['Charges de copropriété','mois',180],['Taxe foncière (lissée)','mois',100],['Assurance PNO / chantier','mois',40],['Électricité et eau chantier','mois',60]]},
  {id:'rev',name:'Revente',lines:[['Agence immobilière','pctVente',4],['Diagnostics obligatoires (DPE, amiante, plomb…)','chf',500],['Home staging et photos','chf',3000],['Annonces / marketing','chf',500]]}
 ];
-const PARAMS=['name','prix','surf','mois','pv','fp','tax'];
+const PARAMS=['name','prix','surf','mois','pv','fp','tax','loym2','vac','aploc','tcred','dcred','gest','entr'];
 function lineVal(l,c){const v=l[2]||0;switch(l[1]){case'chf':return v;case'm2':return v*c.surf;case'pctPrix':return v/100*c.prix;case'pctTrav':return v/100*c.travBase;case'mois':return v*c.mois;case'pctDette':return v/100*c.dette;case'pctAn':return v/100*c.dette*c.mois/12;case'pctVente':return v/100*c.brut}return 0}
 function compute(p,m){
   const c=Object.assign({},p);c.brut=c.pv*c.surf;
@@ -260,7 +278,7 @@ const TASKS=()=>[
 let DB=store.get(DB_KEY)||{biens:{}};
 function persist(){store.set(DB_KEY,DB)}
 function newBienObj(name){return {id:uid('b'),name:name||'Nouveau bien',url:'',address:'',notes:'',status:'analyse',createdAt:Date.now(),sims:{},project:{refSim:null,tasks:TASKS(),journal:[],reel:{}}}}
-function newSimObj(name,p,model){return {id:uid('s'),createdAt:Date.now(),p:p||{name:name||'Base',prix:650000,surf:65,mois:12,pv:12000,fp:20,tax:25},model:model||DEFAULT()}}
+function newSimObj(name,p,model){return {id:uid('s'),createdAt:Date.now(),p:p||{name:name||'Base',prix:650000,surf:65,mois:12,pv:11000,fp:20,tax:25,loym2:30,vac:5,aploc:10,tcred:3.8,dcred:25,gest:6,entr:600},model:model||DEFAULT()}}
 
 /* migration depuis l'ancienne version (deals à plat) */
 (function migrate(){
@@ -477,10 +495,47 @@ function render(){
     ['Dérapage travaux +20 % et +4 mois',{mois:p.mois+4},m2=>m2.find(x=>x.id==='trav').lines.forEach(l=>{if(l[1]!=='pctTrav')l[2]*=1.2})]
   ];
   $('opts').innerHTML=tests.map(t=>{const m2=JSON.parse(JSON.stringify(model));if(t[2])t[2](m2);const r2=compute(Object.assign({},p,t[1]||{}),m2);const d=r2.marge-base;const roi=r2.c.fondsPropres?(r2.marge/r2.c.fondsPropres*100).toFixed(0)+' %':'–';return `<div class="opt"><span>${t[0]}</span><span class="pill ${d<-1?'neg':''}">${d>=0?'+':'−'}${fmt(Math.abs(d))} · ROI ${roi}</span></div>`}).join('');
+  renderLocation(p,r);
   saveSim(false);
 }
+function renderLocation(p,r){
+  const inv=r.c.prix+r.tots.acq+r.tots.trav;
+  const loyer=(p.loym2||0)*p.surf, loyEff=loyer*(1-(p.vac||0)/100);
+  const apport=inv*(p.aploc||0)/100, credit=inv-apport;
+  const rm=(p.tcred||0)/100/12, n=Math.max(1,(p.dcred||25)*12);
+  const mens=credit<=0?0:(rm>0?credit*rm/(1-Math.pow(1+rm,-n)):credit/n);
+  const port=model.find(x=>x.id==='port')||{lines:[]};
+  const lv=re=>{const l=port.lines.find(l=>re.test(l[0]));return l&&l[1]==='mois'?(+l[2]||0):0};
+  const copro=lv(/copropri/i), tf=lv(/fonci/i), pno=lv(/PNO/i);
+  const gestion=loyer*(p.gest||0)/100, entretien=(p.entr||0)/12;
+  const chargesM=copro+tf+pno+gestion+entretien;
+  const cf=loyEff-chargesM-mens;
+  const rbrut=inv?loyer*12/inv*100:0;
+  const rnet=inv?(loyEff-chargesM)*12/inv*100:0;
+  const equil=(1-(p.vac||0)/100)>0?(chargesM+mens)/(1-(p.vac||0)/100):0;
+  $('loc-recap').innerHTML=[
+    ['Investissement (achat + acq. + travaux)',fmt(inv)],
+    ['Apport ('+(p.aploc||0)+' %)',fmt(apport)],
+    ['Crédit ('+(p.dcred||0)+' ans à '+(p.tcred||0)+' %)',fmt(credit)],
+    ['Mensualité du crédit','− '+fmt(mens)],
+    ['Loyer mensuel ('+(p.loym2||0)+' €/m²)',fmt(loyer)],
+    ['Vacance locative','− '+fmt(loyer-loyEff)],
+    ['Copro + taxe foncière + PNO','− '+fmt(copro+tf+pno)],
+    ['Gestion + entretien','− '+fmt(gestion+entretien)]
+  ].map(x=>`<div><span>${x[0]}</span><span class="num">${x[1]}</span></div>`).join('')+
+  `<div class="total"><span>Cash-flow mensuel avant impôt</span><span class="num" style="color:${cf>=0?'var(--pos)':'var(--neg)'}">${(cf>=0?'+':'−')+fmt(Math.abs(cf))}</span></div>`;
+  $('loc-verdict').innerHTML=`
+    <div class="muted" style="font-size:12px">Cash-flow mensuel avant impôt</div>
+    <div class="num" style="font-size:28px;font-weight:500;color:${cf>=0?'var(--pos)':'var(--neg)'};margin-bottom:10px">${(cf>=0?'+':'−')+fmt(Math.abs(cf))} / mois</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <span class="pill">Rendement brut ${rbrut.toFixed(1)} %</span>
+      <span class="pill">Rendement net ${rnet.toFixed(1)} %</span>
+      <span class="pill ${cf>=0?'':'warn'}">${cf>=0?'Le loyer couvre crédit, copro et taxe foncière ✓':'Effort d\'épargne de '+fmt(Math.abs(cf))+' / mois'}</span>
+      <span class="pill gray">Loyer d'équilibre : ${fmt(equil)} / mois (${p.surf?Math.round(equil/p.surf):0} €/m²)</span>
+    </div>`;
+}
 function scenario(s){
-  const p={pess:{mois:16,pv:11000},base:{mois:12,pv:12000},opt:{mois:9,pv:12800}}[s];
+  const p={pess:{mois:16,pv:10000},base:{mois:12,pv:11000},opt:{mois:9,pv:12000}}[s];
   const f={pess:1.2,base:1,opt:0.9}[s];
   model=DEFAULT();model.find(x=>x.id==='trav').lines.forEach(l=>{if(l[1]!=='pctTrav')l[2]=Math.round(l[2]*f)});
   Object.keys(p).forEach(k=>$(k).value=p[k]);
@@ -499,7 +554,8 @@ function importFromHash(b64){
     if(+d.p>0)sim.p.prix=+d.p;
     if(+d.s>0)sim.p.surf=+d.s;
     const trav=sim.model.find(x=>x.id==='trav');
-    trav.lines=[['Rénovation complète (forfait de départ)','m2',1500],['Imprévus','pctTrav',10]];
+    trav.lines=[['Rénovation complète (forfait de départ)','m2',1500]];
+    sim.p.pv=11000;
     sim.extract={source:'favori',titre:d.t||null,prix_affiche:+d.p>0?+d.p:null,surface_m2:+d.s>0?+d.s:null,nb_pieces:d.r||null};
     b.sims[sim.id]=sim;b.project.refSim=sim.id;
     if(typeof d.x==='string'&&d.x.length>40)b.adText=d.x.slice(0,20000);
@@ -574,8 +630,16 @@ function renderSense(d){
   if(miss.length)html+='<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><span class="muted" style="align-self:center">Sense check :</span>'+miss.map(x=>'<span class="pill warn">à récupérer : '+esc(x[1])+'</span>').join('')+'</div>';
   else html+='<div style="margin-top:10px"><span class="pill">Sense check : toutes les infos clés sont là ✓</span></div>';
   if(/^[FG]/i.test(String(d.dpe||'')))html+='<div style="margin-top:8px"><span class="pill neg">DPE '+esc(String(d.dpe).toUpperCase())+' — passoire énergétique : rénovation énergétique à budgéter</span></div>';
+  if(d.prix_affiche&&d.surface_m2){
+    const pm2=Math.round(d.prix_affiche/d.surface_m2);
+    let txt='Achat '+pm2.toLocaleString('fr-FR')+' €/m²',cls='';
+    if(pm2>8000){txt+=' — au-dessus de la cible 6–8 k€/m² pour un bien à rénover';cls='warn'}
+    else if(pm2>=6000)txt+=' — dans la cible 6–8 k€/m² ✓';
+    else txt+=' — sous la cible 6–8 k€/m², à creuser';
+    html+='<div style="margin-top:8px"><span class="pill '+cls+'">'+txt+'</span></div>';
+  }
   const trav=model.find(x=>x.id==='trav');
-  if(trav&&trav.lines.some(l=>/forfait de départ/i.test(l[0])))html+='<div style="margin-top:8px"><span class="pill gray">Travaux initialisés à 1 500 €/m² (forfait à affiner poste par poste)</span></div>';
+  if(trav&&trav.lines.some(l=>/forfait de départ/i.test(l[0])))html+='<div style="margin-top:8px"><span class="pill gray">Travaux 1 500 €/m² tout compris · revente hypothèse 11 000 €/m² (cible 10–12 k)</span></div>';
   $('ex-missing').innerHTML=html;
   $('extract').style.display='block';
 }
