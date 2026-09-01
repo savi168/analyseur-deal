@@ -24,3 +24,18 @@ Il sert d'intermédiaire pour ne jamais exposer votre clé API dans le site.
 
 Ensuite : collez le texte d'une annonce (Ctrl+A, Ctrl+C sur la page) ou
 déposez un PDF, et cliquez « Extraire avec l'IA ».
+
+## Synchronisation des données (optionnel)
+
+Pour retrouver vos biens et simulations sur tous vos appareils :
+
+1. Dans Cloudflare : *Storage & Databases* → *KV* → *Create namespace*,
+   nommez-le par ex. `analyseur-data`.
+2. Dans votre Worker → *Settings* → *Bindings* → *Add* → *KV namespace* :
+   nom de variable **`DATA`** (exactement), namespace `analyseur-data`.
+3. Le secret `APP_TOKEN` doit être configuré (il protège vos données).
+4. Redéployez le Worker avec la dernière version de `extract.js`.
+
+Côté site (page d'accueil → « Sauvegarde & synchronisation ») : boutons
+« Envoyer vers le cloud » / « Récupérer du cloud », et une case à cocher
+pour la sauvegarde automatique après chaque modification.

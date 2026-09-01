@@ -29,6 +29,28 @@ export default {
   async fetch(request, env) {
     const cors = corsHeaders(request.headers.get('Origin') || '', env);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+    const path = new URL(request.url).pathname;
+
+    // ---- Synchronisation des données (nécessite KV "DATA" + APP_TOKEN) ----
+    if (path === '/data') {
+      if (!env.APP_TOKEN) return json({ error: 'configurez le secret APP_TOKEN du Worker pour activer la synchronisation' }, 403, cors);
+      if (request.headers.get('x-app-token') !== env.APP_TOKEN) return json({ error: 'jeton invalide' }, 401, cors);
+      if (!env.DATA) return json({ error: 'liez un espace KV au Worker sous le nom « DATA » (Settings → Bindings → KV namespace) pour activer la synchronisation' }, 500, cors);
+      if (request.method === 'GET') {
+        const raw = await env.DATA.get('db');
+        return json(raw ? JSON.parse(raw) : { data: null, updatedAt: null }, 200, cors);
+      }
+      if (request.method === 'PUT') {
+        let body;
+        try { body = await request.json(); } catch { return json({ error: 'corps JSON invalide' }, 400, cors); }
+        if (!body || typeof body.data !== 'object') return json({ error: 'champ "data" manquant' }, 400, cors);
+        await env.DATA.put('db', JSON.stringify({ data: body.data, updatedAt: Date.now() }));
+        return json({ ok: true, updatedAt: Date.now() }, 200, cors);
+      }
+      return json({ error: 'GET ou PUT attendu sur /data' }, 405, cors);
+    }
+
+    // ---- Extraction d'annonce ----
     if (request.method !== 'POST') return json({ error: 'POST attendu' }, 405, cors);
     if (env.APP_TOKEN && request.headers.get('x-app-token') !== env.APP_TOKEN)
       return json({ error: 'jeton invalide (vérifiez le champ Jeton dans Réglages IA)' }, 401, cors);
@@ -84,7 +106,7 @@ function corsHeaders(origin, env) {
   const ok = allowed.includes(origin) || allowed.includes('*');
   return {
     'Access-Control-Allow-Origin': ok ? origin : allowed[0],
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, PUT, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, x-app-token'
   };
 }

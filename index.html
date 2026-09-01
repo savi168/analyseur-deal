@@ -120,6 +120,18 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   </div>
   <div class="cards" id="cards"></div>
   <section class="panel" style="margin-top:18px">
+    <div class="panel-h"><h2>Sauvegarde &amp; synchronisation</h2><span class="muted" id="sync-state"></span></div>
+    <div class="actions">
+      <button onclick="exportAll()">Exporter tout (fichier)</button>
+      <button onclick="document.getElementById('imp-all').click()">Importer une sauvegarde</button>
+      <input type="file" id="imp-all" accept="application/json" style="display:none" onchange="importAll(this)">
+      <button class="primary" onclick="syncPush(false)">Envoyer vers le cloud</button>
+      <button onclick="syncPull()">Récupérer du cloud</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2)"><input type="checkbox" id="sync-auto" onchange="localStorage.setItem('sync_auto',this.checked?'1':'')" style="width:15px;height:15px;accent-color:var(--accent)"> Sauvegarde auto vers le cloud</label>
+    </div>
+    <p class="note">« Exporter tout » télécharge un fichier de secours avec tous vos biens, simulations et suivis. Le cloud utilise votre Worker Cloudflare (Réglages IA) avec un espace KV : voir les instructions du dossier <a href="https://github.com/savi168/analyseur-deal/tree/main/worker" target="_blank" rel="noopener">worker/</a>. Dernier envoi : <span id="sync-last">jamais</span>.</p>
+  </section>
+  <section class="panel">
     <div class="panel-h"><h2>Import en 1 clic depuis une annonce</h2></div>
     <p class="muted" style="margin:0 0 10px">Glissez ce bouton dans votre barre de favoris. Ensuite, quand vous êtes sur une annonce (SeLoger, Leboncoin, PAP, Bien'ici…), cliquez dessus : le bien se crée ici automatiquement avec l'URL, le prix, la surface et le texte complet de l'annonce (extraction IA automatique si votre Worker est configuré). Après une mise à jour du site, supprimez l'ancien favori et re-glissez celui-ci.</p>
     <a id="bookmarklet" href="#" onclick="return false" title="Glissez-moi dans la barre de favoris" style="display:inline-block;border:1px solid var(--accent);background:var(--accent-bg);color:var(--accent);border-radius:6px;padding:8px 14px;text-decoration:none;font-weight:500">📥 Envoyer vers l'analyseur</a>
@@ -276,7 +288,67 @@ const TASKS=()=>[
  {ph:'Revente',t:'Photos et home staging',done:false},{ph:'Revente',t:'Mise en vente',done:false},{ph:'Revente',t:'Offre d\'achat acceptée',done:false},{ph:'Revente',t:'Signature de l\'acte de revente',done:false}
 ];
 let DB=store.get(DB_KEY)||{biens:{}};
-function persist(){store.set(DB_KEY,DB)}
+let _syncTimer=null;
+function persist(){store.set(DB_KEY,DB);
+  if(localStorage.getItem('sync_auto')==='1'&&(localStorage.getItem('ia_url')||'').trim()){
+    clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>syncPush(true),3000);
+  }
+}
+function dataUrl(){try{return new URL((localStorage.getItem('ia_url')||'').trim()).origin+'/data'}catch(e){return null}}
+function syncMsg(t){const e=$('sync-state');if(e)e.textContent=t}
+function syncStamp(ts){const e=$('sync-last');if(e)e.textContent=ts?new Date(ts).toLocaleString('fr-FR'):'jamais'}
+async function syncPush(silent){
+  const u=dataUrl(),token=(localStorage.getItem('ia_token')||'').trim();
+  if(!u||!token){if(!silent)syncMsg('Configurez d\'abord l\'URL du Worker et le jeton (Réglages IA d\'une simulation).');return}
+  if(!silent)syncMsg('Envoi en cours…');
+  try{
+    const r=await fetch(u,{method:'PUT',headers:{'Content-Type':'application/json','x-app-token':token},body:JSON.stringify({data:DB})});
+    const j=await r.json().catch(()=>null);
+    if(!r.ok||!j||j.error)throw new Error((j&&j.error)||('erreur '+r.status));
+    localStorage.setItem('sync_at',String(j.updatedAt||Date.now()));
+    syncStamp(+localStorage.getItem('sync_at'));
+    syncMsg(silent?'Sauvegarde auto ✓':'Envoyé vers le cloud ✓');
+  }catch(e){syncMsg('Échec de l\'envoi : '+e.message)}
+}
+async function syncPull(){
+  const u=dataUrl(),token=(localStorage.getItem('ia_token')||'').trim();
+  if(!u||!token){syncMsg('Configurez d\'abord l\'URL du Worker et le jeton (Réglages IA d\'une simulation).');return}
+  syncMsg('Récupération…');
+  try{
+    const r=await fetch(u,{headers:{'x-app-token':token}});
+    const j=await r.json().catch(()=>null);
+    if(!r.ok||!j||j.error)throw new Error((j&&j.error)||('erreur '+r.status));
+    if(!j.data||!j.data.biens){syncMsg('Aucune sauvegarde dans le cloud pour l\'instant.');return}
+    const n=Object.keys(j.data.biens).length,cur=Object.keys(DB.biens).length;
+    if(!confirm('Remplacer les '+cur+' bien(s) de ce navigateur par la sauvegarde cloud ('+n+' bien(s), du '+new Date(j.updatedAt).toLocaleString('fr-FR')+') ?'))
+      {syncMsg('Récupération annulée.');return}
+    DB=j.data;store.set(DB_KEY,DB);
+    syncMsg('Données récupérées ✓');renderList();
+  }catch(e){syncMsg('Échec de la récupération : '+e.message)}
+}
+function exportAll(){
+  const data={app:'analyseur-deal',v:2,exportedAt:new Date().toISOString(),db:DB};
+  const a=document.createElement('a');
+  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,1));
+  a.download='analyseur-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  syncMsg('Sauvegarde téléchargée ✓');
+}
+function importAll(inp){
+  const f=inp.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const j=JSON.parse(rd.result);
+      const db=j.db&&j.db.biens?j.db:(j.biens?j:null);
+      if(!db)throw new Error('format inattendu');
+      const n=Object.keys(db.biens).length,cur=Object.keys(DB.biens).length;
+      if(!confirm('Remplacer les '+cur+' bien(s) actuels par la sauvegarde ('+n+' bien(s)) ?')){syncMsg('Import annulé.');return}
+      DB=db;store.set(DB_KEY,DB);
+      syncMsg('Sauvegarde importée ✓');renderList();
+    }catch(e){syncMsg('Fichier illisible : vérifiez que c\'est un export de cet outil.')}
+  };
+  rd.readAsText(f);inp.value='';
+}
 function newBienObj(name){return {id:uid('b'),name:name||'Nouveau bien',url:'',address:'',notes:'',status:'analyse',createdAt:Date.now(),sims:{},project:{refSim:null,tasks:TASKS(),journal:[],reel:{}}}}
 function newSimObj(name,p,model){return {id:uid('s'),createdAt:Date.now(),p:p||{name:name||'Base',prix:650000,surf:65,mois:12,pv:11000,fp:20,tax:25,loym2:30,vac:5,aploc:10,tcred:3.8,dcred:25,gest:6,entr:600},model:model||DEFAULT()}}
 
@@ -667,6 +739,8 @@ var b=btoa(unescape(encodeURIComponent(JSON.stringify(D)))).replace(/\\+/g,'-').
 window.open('https://savi168.github.io/analyseur-deal/#/import/'+b);})();`;
 const _bl=$('bookmarklet');if(_bl)_bl.href='javascript:'+encodeURIComponent(BOOK_SRC);
 $('ia-url').value=localStorage.getItem('ia_url')||'';
+$('sync-auto').checked=localStorage.getItem('sync_auto')==='1';
+syncStamp(+localStorage.getItem('sync_at')||null);
 $('ia-token').value=localStorage.getItem('ia_token')||'';
 PARAMS.forEach(k=>$(k).addEventListener('input',render));
 route();
