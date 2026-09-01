@@ -119,6 +119,11 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     <button class="primary" onclick="newBien()">+ Nouveau bien</button>
   </div>
   <div class="cards" id="cards"></div>
+  <section class="panel" style="margin-top:18px">
+    <div class="panel-h"><h2>Import en 1 clic depuis une annonce</h2></div>
+    <p class="muted" style="margin:0 0 10px">Glissez ce bouton dans votre barre de favoris. Ensuite, quand vous êtes sur une annonce (SeLoger, Leboncoin, PAP, Bien'ici…), cliquez dessus : le bien se crée ici automatiquement avec l'URL, le prix et la surface détectés sur la page.</p>
+    <a id="bookmarklet" href="#" onclick="return false" title="Glissez-moi dans la barre de favoris" style="display:inline-block;border:1px solid var(--accent);background:var(--accent-bg);color:var(--accent);border-radius:6px;padding:8px 14px;text-decoration:none;font-weight:500">📥 Envoyer vers l'analyseur</a>
+  </section>
   <p class="note">Les données sont enregistrées dans ce navigateur uniquement (localStorage). Pensez à exporter vos simulations importantes.</p>
 </div></div>
 
@@ -143,13 +148,24 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <input type="url" id="src" placeholder="https://www.seloger.com/annonces/achat/...">
       <button onclick="saveUrl()">Enregistrer l'URL</button>
-      <button onclick="simulate('url')">Extraction démo</button>
+    </div>
+    <textarea id="ad-text" rows="4" placeholder="Collez ici le texte complet de l'annonce (Ctrl+A puis Ctrl+C sur la page de l'annonce, puis Ctrl+V ici)…" style="margin-bottom:8px"></textarea>
+    <div class="actions" style="margin-bottom:8px">
+      <button class="primary" onclick="extractAI('text')">Extraire avec l'IA</button>
+      <button onclick="document.getElementById('ad-pdf').click()">Extraire depuis un PDF</button>
+      <input type="file" id="ad-pdf" accept="application/pdf" style="display:none" onchange="extractAI('pdf')">
+      <button class="ghost" onclick="toggleIA()">Réglages IA</button>
+    </div>
+    <div id="ia-settings" style="display:none;border:1px dashed var(--line-2);border-radius:6px;padding:12px;margin-bottom:8px">
+      <div class="field wide" style="margin-bottom:8px"><label>URL du Worker</label><input type="url" id="ia-url" placeholder="https://analyseur-extract.mon-compte.workers.dev" oninput="localStorage.setItem('ia_url',this.value)"></div>
+      <div class="field wide"><label>Jeton (APP_TOKEN)</label><input type="text" id="ia-token" placeholder="facultatif si non configuré dans le Worker" oninput="localStorage.setItem('ia_token',this.value)"></div>
+      <p class="note">L'extraction IA passe par un petit Worker Cloudflare gratuit qui garde votre clé API secrète. Instructions d'installation : dossier <a href="https://github.com/savi168/analyseur-deal/tree/main/worker" target="_blank" rel="noopener">worker/</a> du dépôt.</p>
     </div>
     <div class="extract" id="extract">
-      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong style="font-weight:500" id="ex-title"></strong><span class="pill warn" id="ex-tag"></span></div>
-      <dl><div><dt>Surface Carrez </dt><dd>65 m²</dd></div><div><dt>Prix demandé </dt><dd>650 000 € FAI</dd></div><div><dt>Année </dt><dd>1930</dd></div><div><dt>État </dt><dd>à rénover</dd></div><div><dt>Charges </dt><dd>180 €/mois</dd></div><div><dt>Taxe foncière </dt><dd>1 200 €/an</dd></div><div><dt>DPE </dt><dd>F</dd></div><div><dt>Étage </dt><dd>4e sans ascenseur</dd></div></dl>
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong style="font-weight:500" id="ex-title"></strong><span class="pill" id="ex-tag"></span></div>
+      <dl id="ex-dl"></dl>
     </div>
-    <p class="note">L'extraction automatique depuis SeLoger / Leboncoin nécessite un serveur (ces sites bloquent la lecture directe depuis un navigateur tiers). En attendant, l'URL est enregistrée sur la fiche du bien et le bouton « Extraction démo » remplit des données d'exemple.</p>
+    <p class="note">L'extraction directe depuis l'URL SeLoger / Leboncoin est bloquée par leurs protections anti-robot. Deux alternatives : le bouton favori « Envoyer vers l'analyseur » (page d'accueil) depuis l'annonce ouverte, ou le copier-coller du texte / PDF ci-dessus avec l'extraction IA.</p>
   </section>
 
   <section class="panel">
@@ -262,6 +278,7 @@ let curBid=null,curSid=null,bienTab='sims';
 function route(){
   const h=location.hash.replace(/^#\/?/,'').split('/');
   ['view-list','view-bien','view-sim'].forEach(v=>$(v).hidden=true);
+  if(h[0]==='import'&&h[1]){importFromHash(h[1]);return;}
   if(h[0]==='bien'&&DB.biens[h[1]]){curBid=h[1];$('view-bien').hidden=false;renderBien();}
   else if(h[0]==='sim'&&DB.biens[h[1]]&&DB.biens[h[1]].sims[h[2]]){curBid=h[1];curSid=h[2];$('view-sim').hidden=false;loadSim();}
   else{curBid=curSid=null;$('view-list').hidden=false;renderList();}
@@ -464,16 +481,96 @@ function scenario(s){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.textContent.toLowerCase().startsWith({pess:'pess',base:'réal',opt:'opt'}[s])));
   build();
 }
-function simulate(mode){
-  const e=$('extract');e.style.display='block';
-  $('ex-tag').textContent='Démo — extraction non connectée';
-  $('ex-title').textContent='Appartement 3 pièces · Paris 11e, Oberkampf (données d\'exemple)';
-  $('prix').value=650000;$('surf').value=65;render();
+function importFromHash(b64){
+  try{
+    const s=decodeURIComponent(escape(atob(b64.replace(/-/g,'+').replace(/_/g,'/'))));
+    const d=JSON.parse(s);
+    const name=(d.t||'Bien importé').replace(/\s*[|·•—-]\s*(SeLoger|seloger|Leboncoin|leboncoin|PAP|Bien.ici).*$/i,'').trim().slice(0,80)||'Bien importé';
+    const b=newBienObj(name);
+    b.url=typeof d.u==='string'?d.u.slice(0,500):'';
+    b.address=typeof d.a==='string'?d.a.slice(0,200):'';
+    const sim=newSimObj('Base');
+    if(+d.p>0)sim.p.prix=+d.p;
+    if(+d.s>0)sim.p.surf=+d.s;
+    b.sims[sim.id]=sim;b.project.refSim=sim.id;
+    DB.biens[b.id]=b;persist();
+    location.hash='#/bien/'+b.id;
+  }catch(e){location.hash='#/'}
+}
+function toggleIA(){const e=$('ia-settings');e.style.display=e.style.display==='none'?'block':'none'}
+async function extractAI(mode){
+  const url=(localStorage.getItem('ia_url')||'').trim(),token=(localStorage.getItem('ia_token')||'').trim();
+  if(!url){$('ia-settings').style.display='block';$('src-state').textContent='Configurez d\'abord l\'URL du Worker (Réglages IA).';return}
+  const body={};
+  if(mode==='text'){
+    const t=$('ad-text').value.trim();
+    if(!t){$('src-state').textContent='Collez d\'abord le texte de l\'annonce.';return}
+    body.text=t;
+  }else{
+    const f=$('ad-pdf').files[0];if(!f)return;
+    if(f.size>20*1024*1024){$('src-state').textContent='PDF trop lourd (20 Mo max).';$('ad-pdf').value='';return}
+    body.pdf=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result.split(',')[1]);rd.onerror=rej;rd.readAsDataURL(f)});
+    $('ad-pdf').value='';
+  }
+  $('src-state').textContent='Extraction en cours… (quelques secondes)';
+  try{
+    const headers={'Content-Type':'application/json'};if(token)headers['x-app-token']=token;
+    const resp=await fetch(url,{method:'POST',headers,body:JSON.stringify(body)});
+    let data=null;try{data=await resp.json()}catch(e){}
+    if(!resp.ok||!data||data.error)throw new Error((data&&data.error)||('erreur '+resp.status));
+    applyExtract(data);
+    $('src-state').textContent='Extraction terminée ✓';
+  }catch(e){$('src-state').textContent='Échec : '+e.message}
+}
+function applyExtract(d){
+  if(+d.prix_affiche>0)$('prix').value=Math.round(d.prix_affiche);
+  if(+d.surface_m2>0)$('surf').value=d.surface_m2;
+  const port=model.find(x=>x.id==='port');
+  if(port){
+    if(d.charges_mois!=null){const l=port.lines.find(l=>/copropri/i.test(l[0]));if(l)l[2]=Math.round(d.charges_mois)}
+    if(d.taxe_fonciere_an!=null){const l=port.lines.find(l=>/fonci/i.test(l[0]));if(l)l[2]=Math.round(d.taxe_fonciere_an/12)}
+  }
+  const b=curB();
+  if(b){
+    if(!b.address&&(d.adresse||d.ville))b.address=[d.adresse,d.ville].filter(Boolean).join(', ');
+    const bits=[d.etat?'État : '+d.etat:null,d.dpe?'DPE '+d.dpe:null,
+      d.etage!=null?'Étage '+d.etage+(d.ascenseur===false?' sans ascenseur':d.ascenseur===true?' avec ascenseur':''):null,
+      d.annee_construction?'Construit en '+d.annee_construction:null,
+      d.travaux_commentaire||null].filter(Boolean).join(' · ');
+    if(bits&&!(b.notes||'').includes(bits))b.notes=(b.notes?b.notes+'\n':'')+bits;
+    persist();
+  }
+  const rows=[['Prix affiché',d.prix_affiche!=null?fmt(d.prix_affiche):null],
+    ['Surface',d.surface_m2?d.surface_m2+' m²':null],['Pièces',d.nb_pieces],
+    ['Charges',d.charges_mois!=null?Math.round(d.charges_mois)+' €/mois':null],
+    ['Taxe foncière',d.taxe_fonciere_an!=null?Math.round(d.taxe_fonciere_an)+' €/an':null],
+    ['DPE',d.dpe],['État',d.etat],['Étage',d.etage],['Année',d.annee_construction]];
+  $('ex-title').textContent=d.titre||'Annonce analysée';
+  $('ex-tag').textContent='Extrait par IA';
+  $('ex-dl').innerHTML=rows.filter(x=>x[1]!=null&&x[1]!=='').map(x=>'<div><dt>'+esc(x[0])+' </dt><dd>'+esc(String(x[1]))+'</dd></div>').join('');
+  $('extract').style.display='block';
+  build();
 }
 function exportJSON(){const data={p:params(),model};const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,1));a.download=(params().name||'simulation')+'.json';a.click()}
 function importJSON(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);PARAMS.forEach(k=>{if(d.p&&d.p[k]!==undefined)$(k).value=d.p[k]});if(d.model)model=d.model;build();$('msg').textContent='Simulation importée.'}catch(e){$('msg').textContent='Fichier illisible : vérifiez que c\'est un export de cet outil.'}};rd.readAsText(f);inp.value=''}
 function resetModel(){model=DEFAULT();build();$('msg').textContent='Postes par défaut restaurés.'}
 
+const BOOK_SRC=`(function(){var D={u:location.href,t:document.title.slice(0,120)};
+try{var sc=document.querySelectorAll('script[type="application/ld+json"]');
+for(var i=0;i<sc.length;i++){try{var j=JSON.parse(sc[i].textContent);var arr=Array.isArray(j)?j:[j];
+for(var k=0;k<arr.length;k++){var o=arr[k]||{};
+if(!D.p&&o.offers&&o.offers.price)D.p=parseInt(String(o.offers.price).replace(/[^0-9]/g,''),10);
+if(!D.a&&o.address)D.a=[o.address.streetAddress,o.address.postalCode,o.address.addressLocality].filter(Boolean).join(' ');
+if(!D.s&&o.floorSize&&o.floorSize.value)D.s=parseFloat(String(o.floorSize.value).replace(',','.'));
+}}catch(e){}}}catch(e){}
+var T=document.body.innerText||'';
+if(!D.s){var m=T.match(/(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*m²/);if(m)D.s=parseFloat(m[1].replace(',','.'))}
+if(!D.p){var m2=T.match(/(\\d{1,3}(?:[\\s\\u00a0]\\d{3})+|\\d{5,9})\\s*€/);if(m2)D.p=parseInt(m2[1].replace(/[^0-9]/g,''),10)}
+var b=btoa(unescape(encodeURIComponent(JSON.stringify(D)))).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');
+window.open('https://savi168.github.io/analyseur-deal/#/import/'+b);})();`;
+const _bl=$('bookmarklet');if(_bl)_bl.href='javascript:'+encodeURIComponent(BOOK_SRC);
+$('ia-url').value=localStorage.getItem('ia_url')||'';
+$('ia-token').value=localStorage.getItem('ia_token')||'';
 PARAMS.forEach(k=>$(k).addEventListener('input',render));
 route();
 </script>
