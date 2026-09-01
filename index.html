@@ -121,7 +121,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   <div class="cards" id="cards"></div>
   <section class="panel" style="margin-top:18px">
     <div class="panel-h"><h2>Import en 1 clic depuis une annonce</h2></div>
-    <p class="muted" style="margin:0 0 10px">Glissez ce bouton dans votre barre de favoris. Ensuite, quand vous êtes sur une annonce (SeLoger, Leboncoin, PAP, Bien'ici…), cliquez dessus : le bien se crée ici automatiquement avec l'URL, le prix et la surface détectés sur la page.</p>
+    <p class="muted" style="margin:0 0 10px">Glissez ce bouton dans votre barre de favoris. Ensuite, quand vous êtes sur une annonce (SeLoger, Leboncoin, PAP, Bien'ici…), cliquez dessus : le bien se crée ici automatiquement avec l'URL, le prix, la surface et le texte complet de l'annonce (extraction IA automatique si votre Worker est configuré). Après une mise à jour du site, supprimez l'ancien favori et re-glissez celui-ci.</p>
     <a id="bookmarklet" href="#" onclick="return false" title="Glissez-moi dans la barre de favoris" style="display:inline-block;border:1px solid var(--accent);background:var(--accent-bg);color:var(--accent);border-radius:6px;padding:8px 14px;text-decoration:none;font-weight:500">📥 Envoyer vers l'analyseur</a>
   </section>
   <p class="note">Les données sont enregistrées dans ce navigateur uniquement (localStorage). Pensez à exporter vos simulations importantes.</p>
@@ -275,6 +275,7 @@ function newSimObj(name,p,model){return {id:uid('s'),createdAt:Date.now(),p:p||{
 
 /* ---------- routage ---------- */
 let curBid=null,curSid=null,bienTab='sims';
+let pendingExtract=false;
 function route(){
   const h=location.hash.replace(/^#\/?/,'').split('/');
   ['view-list','view-bien','view-sim'].forEach(v=>$(v).hidden=true);
@@ -431,7 +432,10 @@ function loadSim(){
   $('src').value=b.url||'';
   $('src-state').textContent=b.url?'URL enregistrée sur la fiche du bien':'Aucune URL enregistrée';
   $('extract').style.display='none';
+  $('ad-text').value=b.adText||'';
   build();
+  if(pendingExtract){pendingExtract=false;if($('ad-text').value){$('src-state').textContent='Texte de l\'annonce récupéré — extraction IA automatique…';extractAI('text')}}
+  else if(b.adText)$('src-state').textContent='Texte de l\'annonce récupéré par le favori — cliquez « Extraire avec l\'IA ».';
 }
 function backToBien(){location.hash='#/bien/'+curBid}
 function saveUrl(){const b=curB();if(!b)return;b.url=$('src').value.trim();persist();$('src-state').textContent=b.url?'URL enregistrée sur la fiche du bien':'Aucune URL enregistrée';$('msg').textContent=b.url?'URL enregistrée sur la fiche « '+b.name+' ».':'URL effacée.'}
@@ -493,8 +497,10 @@ function importFromHash(b64){
     if(+d.p>0)sim.p.prix=+d.p;
     if(+d.s>0)sim.p.surf=+d.s;
     b.sims[sim.id]=sim;b.project.refSim=sim.id;
+    if(typeof d.x==='string'&&d.x.length>40)b.adText=d.x.slice(0,20000);
     DB.biens[b.id]=b;persist();
-    location.hash='#/bien/'+b.id;
+    if(b.adText&&(localStorage.getItem('ia_url')||'').trim()){pendingExtract=true;location.hash='#/sim/'+b.id+'/'+sim.id}
+    else location.hash='#/bien/'+b.id;
   }catch(e){location.hash='#/'}
 }
 function toggleIA(){const e=$('ia-settings');e.style.display=e.style.display==='none'?'block':'none'}
@@ -555,7 +561,7 @@ function exportJSON(){const data={p:params(),model};const a=document.createEleme
 function importJSON(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);PARAMS.forEach(k=>{if(d.p&&d.p[k]!==undefined)$(k).value=d.p[k]});if(d.model)model=d.model;build();$('msg').textContent='Simulation importée.'}catch(e){$('msg').textContent='Fichier illisible : vérifiez que c\'est un export de cet outil.'}};rd.readAsText(f);inp.value=''}
 function resetModel(){model=DEFAULT();build();$('msg').textContent='Postes par défaut restaurés.'}
 
-const BOOK_SRC=`(function(){var D={u:location.href,t:document.title.slice(0,120)};
+const BOOK_SRC=`(function(){var D={v:2,u:location.href,t:document.title.slice(0,120)};
 try{var sc=document.querySelectorAll('script[type="application/ld+json"]');
 for(var i=0;i<sc.length;i++){try{var j=JSON.parse(sc[i].textContent);var arr=Array.isArray(j)?j:[j];
 for(var k=0;k<arr.length;k++){var o=arr[k]||{};
@@ -563,9 +569,14 @@ if(!D.p&&o.offers&&o.offers.price)D.p=parseInt(String(o.offers.price).replace(/[
 if(!D.a&&o.address)D.a=[o.address.streetAddress,o.address.postalCode,o.address.addressLocality].filter(Boolean).join(' ');
 if(!D.s&&o.floorSize&&o.floorSize.value)D.s=parseFloat(String(o.floorSize.value).replace(',','.'));
 }}catch(e){}}}catch(e){}
-var T=document.body.innerText||'';
-if(!D.s){var m=T.match(/(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*m²/);if(m)D.s=parseFloat(m[1].replace(',','.'))}
-if(!D.p){var m2=T.match(/(\\d{1,3}(?:[\\s\\u00a0]\\d{3})+|\\d{5,9})\\s*€/);if(m2)D.p=parseInt(m2[1].replace(/[^0-9]/g,''),10)}
+var T=(document.body.innerText||'').replace(/\\s+/g,' ');
+if(!D.p){var best=0,re=/(\\d{1,3}(?:[\\s.]\\d{3})+|\\d{5,9})(?:,\\d+)?\\s*(?:€|EUR)/g,mm;
+while((mm=re.exec(T))!==null){var v=parseInt(mm[1].replace(/[^0-9]/g,''),10);if(v>best&&v<20000000)best=v}
+if(best>=10000)D.p=best}
+if(!D.s){var re2=/(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*m²/g,m2,sv;
+while((m2=re2.exec(T))!==null){sv=parseFloat(m2[1].replace(',','.'));if(sv>=8&&sv<=1000){D.s=sv;break}}}
+var mp=T.match(/(\\d{1,2})\\s*pi[èe]ces?/i);if(mp)D.r=parseInt(mp[1],10);
+D.x=T.slice(0,15000);
 var b=btoa(unescape(encodeURIComponent(JSON.stringify(D)))).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');
 window.open('https://savi168.github.io/analyseur-deal/#/import/'+b);})();`;
 const _bl=$('bookmarklet');if(_bl)_bl.href='javascript:'+encodeURIComponent(BOOK_SRC);
